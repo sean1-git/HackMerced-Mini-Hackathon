@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle GAI</title>
+    <style>
+        body {
+            font-family: 'Consolas', monospace;
+            background-color: #0d0d0d;
+            color: #00ff41; /* Neon green */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            border: 2px solid #00ff41;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            background: rgba(0, 0, 0, 0.8);
+            position: relative; /* For top-right stats */
+        }
+
+        /* Top-left container for Rules */
+        .game-controls-container {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 1.2em;
+        }
+
+        #rules-btn,
+        #history-btn {
+            background: none;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        /* Top-right container for timer/history */
+        .game-stats-container {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 1.2em;
+        }
+
+        #timer {
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        h1, h2 {
+            text-align: center;
+            text-transform: uppercase;
+            color: #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .controls, .puzzle-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        button, input[type="text"] {
+            background-color: #004d19;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 10px 20px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-family: 'Consolas', monospace;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            background-color: #006622;
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        #show-answer-btn {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+        #show-answer-btn:hover {
+            background-color: #4d0000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            background: #000000;
+        }
+
+        .output-box {
+            border: 1px dashed #00ff41;
+            padding: 20px;
+            white-space: pre-wrap;
+            margin-top: 15px;
+            min-height: 150px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-left: 5px solid;
+        }
+
+        .status-message.error {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+
+        .status-message.success {
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+
+        /* Styles for the End Screen */
+        #end-screen h1 {
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+        }
+        .score-breakdown {
+            font-size: 1.1em;
+            list-style: none;
+            padding-left: 0;
+        }
+        .score-breakdown li {
+            margin-bottom: 10px;
+        }
+        .score-breakdown .final-score {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00ff41;
+        }
+
+        /* --- Modal Styles --- */
+        .modal {
+            position: fixed; /* Sit on top of the page */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.7); /* Black w/ opacity */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #0d0d0d;
+            border: 2px solid #00ff41;
+            padding: 30px;
+            max-width: 600px;
+            width: 80%;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+        }
+        
+        #close-modal-btn,
+        #close-history-modal-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+        #close-modal-btn:hover,
+        #close-history-modal-btn:hover {
+            background-color: #4d0000;
+            color: #ff0000;
+            border-color: #ff0000;
+        }
+
+        .modal-content ul {
+            list-style-type: '>'; /* Terminal-style bullet */
+            padding-left: 20px;
+        }
+        .modal-content li {
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* --- History List Styles --- */
+        #history-list {
+            list-style: none;
+            padding: 0;
+            font-family: 'Consolas', monospace; /* Ensure alignment */
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .history-item, .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+        .history-item {
+             border-bottom: 1px dashed #00ff41;
+        }
+        .history-item span:nth-child(1), .history-header span:nth-child(1) { /* Name */
+            flex-basis: 50%;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .history-item span:nth-child(2), .history-header span:nth-child(2) { /* Time */
+            flex-basis: 25%;
+            text-align: right;
+        }
+        .history-item span:nth-child(3), .history-header span:nth-child(3) { /* Score */
+            flex-basis: 25%;
+            text-align: right;
+        }
+        .history-header {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 15px;
+        }
+        #no-history-msg {
+            font-style: italic;
+            opacity: 0.7;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="game-controls-container">
+            <button id="rules-btn">Rules</button>
+        </div>
+
+        <div class="game-stats-container">
+            <button id="history-btn">Game History</button>
+            <div id="timer" class="hidden">00:00:00</div>
+        </div>
+
+        <div id="start-screen">
+            <h1>Puzzle GAI</h1>
+            <p>Select your difficulty and genre to generate a customized cypher-based story.</p>
+
+            <h2>Difficulty</h2>
+            <div class="controls">
+                <button data-value="Easy" data-type="difficulty">Easy (7 Puzzles)</button>
+                <button data-value="Medium" data-type="difficulty">Medium (5 Puzzles)</button>
+                <button data-value="Hard" data-type="difficulty">Hard (3 Puzzles)</button>
+            </div>
+
+            <h2>Genre</h2>
+            <div class="controls">
+                <button data-value="Sci-fi" data-type="genre">Sci-fi</button>
+                <button data-value="Medieval" data-type="genre">Medieval</button>
+                <button data-value="Mythological" data-type="genre">Mythological</button>
+                <button data-value="Horror" data-type="genre">Horror</button>
+                <button data-value="Modern" data-type="genre">Modern</button>
+            </div>
+
+            <button id="start-game-btn" disabled>Start Game</button>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <h1 id="game-title"></h1>
+            <h2 id="puzzle-header"></h2>
+            
+            <p class="output-box" id="narrative-output">...</p>
+
+            <div id="puzzle-area">
+                <p id="puzzle-text" class="output-box"></p>
+                <div class="controls">
+                    <input type="text" id="answer-input" placeholder="Enter solution code..." onkeyup="if(event.key === 'Enter') checkAnswer()">
+                    <button id="submit-btn" onclick="checkAnswer()">Submit Code</button>
+                </div>
+            </div>
+
+            <div class="puzzle-options">
+                <button id="hint-btn" onclick="getHint()">Hint - Remaining: <span id="hint-count">3</span></button>
+                <button id="show-answer-btn" class="hidden" onclick="showAnswer()">Show Answer - Abort</button>
+                <button onclick="window.location.reload()">Reset Game</button>
+            </div>
+            
+            <div class="status-message hidden" id="feedback"></div>
+        </div>
+
+        <div id="end-screen" class="hidden">
+            <h1 id="final-screen-title">Mission Complete</h1> 
+            <ul class="score-breakdown">
+                <li id="final-time"></li>
+                <hr>
+                <li id="base-score"></li>
+                <li id="time-bonus"></li>
+                <hr>
+                <li id="final-score" class="final-score"></li>
+            </ul>
+            <p>Your session has concluded. Click 'Start New Game' below to attempt another simulation.</p> 
+            <div class="controls">
+                <button onclick="window.location.reload()">Start New Game</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="rules-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="close-modal-btn">CLOSE [X]</button>
+            <h2>Game Rules</h2>
+            <p>Welcome to the Puzzle GAI. Your objective is clear:</p>
+            <ul>
+                <li>**Objective:** Solve a sequence of encrypted puzzles to complete the narrative.</li>
+                <li>**Input:** All solutions must be entered into the "Submit Code" field. Solutions are **case-insensitive** and ignore extra spaces/punctuation.</li>
+                <li>**Difficulty:** Your chosen difficulty determines the **number of puzzles** (Easy: 7, Medium: 5, Hard: 3) and the **complexity** of the ciphers and riddles.</li>
+                <li>**Hints:** You have a maximum of **3 hints per puzzle**. Each hint is more direct than the last. Once you use the final hint, the **Show Answer** option will appear.</li>
+                <li>**Failure:** Using the **Show Answer** button will reveal the current puzzle's solution and immediately end the current game session.</li>
+                <li>**Success:** Solve all puzzles to complete the story and reach the final scoring screen.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="close-history-modal-btn">CLOSE [X]</button>
+            <h2>Game History</h2>
+            <ul id="history-list">
+                <li id="no-history-msg" class="hidden">No completed games found.</li>
+            </ul>
+        </div>
+    </div>
+
+
+    <script>
+        // Frontend State Management
+        let selectedDifficulty = null;
+        let selectedGenre = null;
+        let currentPuzzle = null;
+        let currentPuzzleIndex = 0; // 0-based for internal logic
+        let totalPuzzles = 0;
+        
+        let hintsUsedOnCurrentPuzzle = 0;
+        const maxHintsPerPuzzle = 3;
+
+        // Scoring and Timer variables
+        let score = 0;
+        let startTime = 0;
+        let timerInterval = null;
+        let finalTime = "00:00:00";
+        const difficultyPoints = { "Easy": 1000, "Medium": 2000, "Hard": 4000 };
+        const hintPenalties = { 1: 100, 2: 200, 3: 400 };
+        
+        // --- Element cache ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const hintCountSpan = document.getElementById('hint-count');
+        const feedbackDiv = document.getElementById('feedback');
+        const hintBtn = document.getElementById('hint-btn');
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const showAnswerBtn = document.getElementById('show-answer-btn');
+        const timerEl = document.getElementById('timer');
+        const historyBtn = document.getElementById('history-btn');
+
+        // Rules Modal elements
+        const rulesBtn = document.getElementById('rules-btn');
+        const rulesModal = document.getElementById('rules-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        // History Modal elements
+        const historyModal = document.getElementById('history-modal');
+        const closeHistoryModalBtn = document.getElementById('close-history-modal-btn');
+        const historyList = document.getElementById('history-list');
+        const noHistoryMsg = document.getElementById('no-history-msg');
+
+        // --- Utility Functions ---
+        function setFeedback(message, type) {
+            feedbackDiv.textContent = message;
+            feedbackDiv.className = `status-message ${type}`;
+            feedbackDiv.classList.remove('hidden');
+        }
+
+        function clearFeedback() {
+            feedbackDiv.classList.add('hidden');
+            feedbackDiv.textContent = '';
+        }
+
+        function updateHintDisplay() {
+            let hintsLeft = maxHintsPerPuzzle - hintsUsedOnCurrentPuzzle;
+            hintCountSpan.textContent = hintsLeft;
+            hintBtn.disabled = (hintsLeft <= 0);
+        }
+
+        function toggleButtons(selector, selectedValue) {
+            document.querySelectorAll(selector).forEach(btn => {
+                btn.style.borderColor = btn.dataset.value === selectedValue ? '#ffc0cb' : '#00ff41'; // Highlight selected
+            });
+            startGameBtn.disabled = !(selectedDifficulty && selectedGenre);
+            // UPDATED: Neutral Button Text
+            startGameBtn.textContent = selectedDifficulty && selectedGenre 
+                ? `Start Game: ${selectedDifficulty} ${selectedGenre}` 
+                : 'Start Game (Select Difficulty & Genre)';
+        }
+
+        // --- Timer Functions ---
+        function formatTime(ms) {
+            let seconds = Math.floor(ms / 1000);
+            let hours = Math.floor(seconds / 3600);
+            seconds = seconds % 3600;
+            let minutes = Math.floor(seconds / 60);
+            seconds = seconds % 60;
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerEl.classList.remove('hidden');
+            historyBtn.classList.add('hidden'); // Hide history button
+
+            timerInterval = setInterval(() => {
+                const elapsedTime = Date.now() - startTime;
+                timerEl.textContent = formatTime(elapsedTime);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            const elapsedTime = Date.now() - startTime;
+            finalTime = formatTime(elapsedTime);
+            timerEl.classList.add('hidden');
+            historyBtn.classList.remove('hidden'); // Show history button again
+        }
+
+        // --- Event Listeners ---
+        document.querySelectorAll('[data-type]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const type = e.target.dataset.type;
+                const value = e.target.dataset.value;
+                
+                if (type === 'difficulty') {
+                    selectedDifficulty = value;
+                    toggleButtons('[data-type="difficulty"]', value);
+                } else if (type === 'genre') {
+                    selectedGenre = value;
+                    toggleButtons('[data-type="genre"]', value);
+                }
+            });
+        });
+
+        startGameBtn.addEventListener('click', startGame);
+
+        // Rules Modal Event Listeners
+        rulesBtn.addEventListener('click', () => {
+            rulesModal.classList.remove('hidden');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            rulesModal.classList.add('hidden');
+        });
+
+        rulesModal.addEventListener('click', (e) => {
+            if (e.target === rulesModal) {
+                rulesModal.classList.add('hidden');
+            }
+        });
+
+        // History Modal Event Listeners
+        historyBtn.addEventListener('click', () => {
+            loadGameHistory(); // Load data and show modal
+        });
+
+        closeHistoryModalBtn.addEventListener('click', () => {
+            historyModal.classList.add('hidden');
+        });
+
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) {
+                historyModal.classList.add('hidden');
+            }
+        });
+
+        // --- Game History Functions ---
+        function loadGameHistory() {
+            const historyData = localStorage.getItem('argGameHistory');
+            // Clear previous list
+            historyList.innerHTML = ''; 
+
+            // Add Header Row
+            const headerLi = document.createElement('li');
+            headerLi.className = 'history-header';
+            headerLi.innerHTML = `
+                <span>Game/Genre</span>
+                <span>Time</span>
+                <span>Score</span>
+            `;
+            historyList.appendChild(headerLi);
+            
+            if (!historyData) {
+                noHistoryMsg.classList.remove('hidden');
+                historyList.appendChild(noHistoryMsg);
+            } else {
+                noHistoryMsg.classList.add('hidden');
+                const history = JSON.parse(historyData);
+                
+                history.forEach((game, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'history-item';
+                    
+                    // Format: 1. Easy Sci-fi | 00:09:34 | 7200pts
+                    li.innerHTML = `
+                        <span>${index + 1}. ${game.difficulty} ${game.genre}</span>
+                        <span>${game.time}</span>
+                        <span>${game.score}pts</span>
+                    `;
+                    historyList.appendChild(li);
+                });
+            }
+            historyModal.classList.remove('hidden');
+        }
+
+        function saveGameToHistory(gameData) {
+            const historyData = localStorage.getItem('argGameHistory');
+            let history = [];
+
+            if (historyData) {
+                history = JSON.parse(historyData);
+            }
+
+            history.push(gameData); // Add the new game
+            
+            // Save back to localStorage
+            localStorage.setItem('argGameHistory', JSON.stringify(history));
+        }
+
+        // --- Core Game Functions ---
+
+        async function startGame() {
+            clearFeedback();
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            document.getElementById('narrative-output').innerHTML = "Loading: Analyzing genre and difficulty... Generating custom puzzle sequence via GAI Protocol. Please wait...";
+            
+            try {
+                const response = await fetch('/generate_story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        difficulty: selectedDifficulty, 
+                        genre: selectedGenre 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    setFeedback(data.error, 'error');
+                    document.getElementById('narrative-output').textContent = "ERROR: Failed to load game data.";
+                    return;
+                }
+
+                // Initialize Game State
+                document.getElementById('game-title').textContent = data.title;
+                document.getElementById('narrative-output').textContent = data.introduction;
+                currentPuzzle = data.puzzle;
+                currentPuzzleIndex = data.puzzle_index - 1; // 0-based
+                totalPuzzles = data.total_puzzles;
+                
+                // Reset hints and score
+                hintsUsedOnCurrentPuzzle = 0;
+                score = 0;
+                updateHintDisplay();
+                showAnswerBtn.classList.add('hidden'); // Ensure button is hidden
+                
+                displayPuzzle();
+                startTimer(); // Start the clock!
+
+            } catch (error) {
+                setFeedback(`A communication error occurred: ${error.message}`, 'error');
+                console.error('Start Game Error:', error);
+            }
+        }
+
+        function displayPuzzle() {
+            document.getElementById('puzzle-header').textContent = `[PUZZLE ${currentPuzzleIndex + 1} of ${totalPuzzles}] - ${currentPuzzle.title}`;
+            document.getElementById('puzzle-text').textContent = currentPuzzle.puzzle_text;
+            answerInput.value = '';
+            document.getElementById('puzzle-area').classList.remove('hidden');
+        }
+
+        function showEndScreen(narrative, endingText) {
+            stopTimer();
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            
+            // Calculate final scores
+            const baseScore = score; // Score from puzzles and hints
+            const elapsedTime = Date.now() - startTime;
+            const totalMinutes = Math.floor(elapsedTime / 60000); // Rounded down
+            
+            let timeBonus = 6000 - (totalMinutes * 100);
+            timeBonus = Math.max(0, timeBonus); // Cap at 0, no negative bonus
+            
+            const finalScore = baseScore + timeBonus;
+
+            // Save the completed game to history
+            const gameData = {
+                difficulty: selectedDifficulty,
+                genre: selectedGenre,
+                time: finalTime,
+                score: finalScore
+            };
+            saveGameToHistory(gameData);
+
+            // Populate end screen
+            document.getElementById('final-time').textContent = `Total Time: ${finalTime}`;
+            document.getElementById('base-score').textContent = `Base Score (Puzzles - Hints): ${baseScore}pts`;
+            document.getElementById('time-bonus').textContent = `Time Bonus (Under 1hr): ${timeBonus}pts`;
+            document.getElementById('final-score').textContent = `Final Score: ${finalScore}pts`;
+            
+            // UPDATED: Title reflects the narrative/genre-specific ending text
+            document.getElementById('final-screen-title').textContent = endingText;
+        }
+
+        async function checkAnswer() {
+            clearFeedback();
+            const answer = answerInput.value;
+            if (!answer) {
+                setFeedback("INPUT REQUIRED: Please enter a code before submitting.", 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/check_answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer: answer })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'incorrect') {
+                    setFeedback("CODE REJECTED: Decryption failed. Try again.", 'error');
+                
+                } else if (data.status === 'correct' || data.status === 'complete') {
+                    // Correct answer! Add points and show feedback.
+                    score += difficultyPoints[selectedDifficulty];
+                    setFeedback("CODE ACCEPTED: Access granted. Proceeding...", 'success');
+                    
+                    document.getElementById('narrative-output').textContent = data.narrative;
+                    
+                    if (data.status === 'complete') {
+                        // Game is finished, move to end screen
+                        setTimeout(() => {
+                            showEndScreen(data.narrative, data.ending_text);
+                        }, 1500); // 1.5 second delay
+                    } else {
+                        // Move to next puzzle
+                        hintsUsedOnCurrentPuzzle = 0;
+                        updateHintDisplay();
+                        showAnswerBtn.classList.add('hidden');
+
+                        currentPuzzle = data.puzzle;
+                        currentPuzzleIndex = data.puzzle_index - 1; // 0-based
+                        displayPuzzle();
+                    }
+                }
+            } catch (error)
+ {
+                setFeedback(`A communication error occurred: ${error.message}`, 'error');
+                console.error('Check Answer Error:', error);
+            }
+        }
+
+        function getHint() {
+            clearFeedback();
+            
+            if (hintsUsedOnCurrentPuzzle >= maxHintsPerPuzzle) {
+                setFeedback("HINT LIMIT REACHED: You have used all 3 hints for this puzzle.", 'error');
+                return;
+            }
+
+            let hintKey = '';
+            let penalty = 0;
+
+            if (hintsUsedOnCurrentPuzzle === 0) {
+                hintKey = 'hint_1';
+                penalty = hintPenalties[1];
+            } else if (hintsUsedOnCurrentPuzzle === 1) {
+                hintKey = 'hint_2';
+                penalty = hintPenalties[2];
+            } else if (hintsUsedOnCurrentPuzzle === 2) {
+                hintKey = 'hint_3';
+                penalty = hintPenalties[3];
+            }
+
+            const hintText = currentPuzzle[hintKey];
+            
+            // Apply penalty and update state
+            score -= penalty;
+            hintsUsedOnCurrentPuzzle++;
+            updateHintDisplay(); // Updates counter
+
+            // Display the hint
+            const currentText = document.getElementById('narrative-output').textContent;
+            document.getElementById('narrative-output').textContent = 
+                currentText + `\n\n--- [HINT ${hintsUsedOnCurrentPuzzle}] ---\n${hintText}`;
+            
+            setFeedback(`HINT ACTIVATED: Hint ${hintsUsedOnCurrentPuzzle} displayed. Penalty: -${penalty}pts.`, 'error');
+            
+            // Show the answer button if this was the 3rd hint
+            if (hintsUsedOnCurrentPuzzle === maxHintsPerPuzzle) {
+                showAnswerBtn.classList.remove('hidden');
+                setFeedback(`HINT ACTIVATED: Hint ${hintsUsedOnCurrentPuzzle} displayed. All hints used. 'Show Answer' enabled.`, 'error');
+            }
+        }
+
+        function showAnswer() {
+            if (!currentPuzzle) return; 
+
+            const solution = currentPuzzle.solution;
+            setFeedback(`[ABORT] Solution revealed: ${solution}. Rebooting in 10 seconds...`, 'error');
+
+            answerInput.disabled = true;
+            submitBtn.disabled = true;
+            hintBtn.disabled = true;
+            showAnswerBtn.disabled = true;
+            stopTimer(); // Stop the timer on abort
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 10000); // 10 seconds
+        }
+
+    </script>
+</body>
+</html>
